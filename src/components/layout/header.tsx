@@ -21,7 +21,7 @@ export function Header({ title, description, onMenuClick }: HeaderProps) {
   }
 
   return (
-    <header className="sticky top-0 z-20 border-b border-stone-200/80 bg-[#fbfaf8]/90 backdrop-blur">
+    <header className="sticky top-0 z-20 shrink-0 border-b border-stone-200/80 bg-[#fbfaf8]/90 backdrop-blur">
       <div className="flex items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
         <div className="flex min-w-0 items-center gap-3">
           <Button

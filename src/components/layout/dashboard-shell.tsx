@@ -17,9 +17,11 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 
   return (
     <ShellContext.Provider value={{ openMenu: () => setOpen(true) }}>
-      <div className="flex min-h-screen bg-[#fbfaf8] text-stone-900">
+      <div className="flex h-dvh overflow-hidden bg-[#fbfaf8] text-stone-900">
         <Sidebar open={open} onClose={() => setOpen(false)} />
-        <div className="flex min-w-0 flex-1 flex-col">{children}</div>
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto">
+          {children}
+        </div>
       </div>
     </ShellContext.Provider>
   );

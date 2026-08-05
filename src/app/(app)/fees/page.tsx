@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ErrorState } from "@/components/states";
+import { Guard } from "@/components/guard";
 import { useFees } from "@/hooks/use-data";
 import { formatPercent } from "@/lib/utils";
 
@@ -163,7 +164,9 @@ export default function FeesPage() {
                     </p>
                   ) : null}
 
-                  <Button type="submit">Save</Button>
+                  <Guard permission="fees:write">
+                    <Button type="submit">Save</Button>
+                  </Guard>
                 </form>
               )}
             </CardContent>

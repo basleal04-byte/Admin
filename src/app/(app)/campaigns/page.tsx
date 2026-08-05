@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { format } from "date-fns";
 import { PageHeader } from "@/components/layout/dashboard-shell";
 import { Card, CardContent } from "@/components/ui/card";
@@ -10,12 +11,12 @@ import { CampaignStatusBadge } from "@/components/status-badge";
 import { ErrorState, TableSkeleton } from "@/components/states";
 import { useCampaigns } from "@/hooks/use-data";
 import { formatNumber } from "@/lib/utils";
-import type { Campaign } from "@/types";
+import type { HappyHourCampaign } from "@/types";
 
 type PendingAction = {
   id: string;
   title: string;
-  status: Campaign["status"];
+  status: HappyHourCampaign["status"];
 } | null;
 
 export default function CampaignsPage() {
@@ -37,15 +38,15 @@ export default function CampaignsPage() {
   return (
     <>
       <PageHeader
-        title="Campaigns"
-        description="Loyalty offers"
+        title="Happy hour campaigns"
+        description="Merchant bonus point offers"
       />
       <main className="flex-1 space-y-4 p-4 sm:p-6 lg:p-8">
         <Card>
           <CardContent className="p-0">
             {loading ? (
               <div className="p-5">
-                <TableSkeleton />
+                <TableSkeleton rows={4} />
               </div>
             ) : error ? (
               <div className="p-5">
@@ -59,6 +60,7 @@ export default function CampaignsPage() {
                       <th className="px-5 py-3 font-medium">Campaign</th>
                       <th className="px-5 py-3 font-medium">Merchant</th>
                       <th className="px-5 py-3 font-medium">Bonus BP</th>
+                      <th className="px-5 py-3 font-medium">Points issued</th>
                       <th className="px-5 py-3 font-medium">Window</th>
                       <th className="px-5 py-3 font-medium">Status</th>
                       <th className="px-5 py-3 font-medium text-right">Actions</th>
@@ -73,9 +75,19 @@ export default function CampaignsPage() {
                             {formatNumber(c.redemptions)} redemptions
                           </p>
                         </td>
-                        <td className="px-5 py-3.5 text-stone-600">{c.merchantName}</td>
+                        <td className="px-5 py-3.5">
+                          <Link
+                            href={`/merchants/${c.merchantId}`}
+                            className="font-mono text-xs text-emerald-800 hover:underline"
+                          >
+                            {c.merchantId}
+                          </Link>
+                        </td>
                         <td className="px-5 py-3.5 tabular-nums text-emerald-800">
                           +{formatNumber(c.bonusPoints)}
+                        </td>
+                        <td className="px-5 py-3.5 tabular-nums">
+                          {formatNumber(c.pointsIssued)}
                         </td>
                         <td className="px-5 py-3.5 whitespace-nowrap text-stone-500">
                           {format(new Date(c.startsAt), "MMM d")} to{" "}
@@ -146,9 +158,7 @@ export default function CampaignsPage() {
         open={!!pending}
         title="Update campaign"
         description={
-          pending
-            ? `Set "${pending.title}" to ${pending.status}.`
-            : ""
+          pending ? `Set "${pending.title}" to ${pending.status}.` : ""
         }
         confirmLabel="Confirm"
         destructive={pending?.status === "ended"}

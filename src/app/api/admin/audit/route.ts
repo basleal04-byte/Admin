@@ -3,7 +3,7 @@ import { requireAdmin } from "@/lib/session";
 import { db } from "@/lib/store";
 
 export async function GET() {
-  const auth = await requireAdmin();
+  const auth = await requireAdmin("audit:read");
   if (auth.error) return auth.error;
   return NextResponse.json(db.listAudit());
 }

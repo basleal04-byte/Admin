@@ -1,9 +1,14 @@
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { authOptions } from "@/lib/auth";
+import { can } from "@/lib/permissions";
+import type { Permission } from "@/types";
 import type { Session } from "next-auth";
+import type { AdminRole } from "@/types";
 
-export async function requireAdmin(): Promise<
+export async function requireAdmin(
+  permission?: Permission
+): Promise<
   { session: Session; error?: undefined } | { session?: undefined; error: NextResponse }
 > {
   const session = await getServerSession(authOptions);
@@ -12,7 +17,13 @@ export async function requireAdmin(): Promise<
       error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }),
     };
   }
-  if (session.user.role !== "admin") {
+  const role = session.user.role as AdminRole;
+  if (!role) {
+    return {
+      error: NextResponse.json({ error: "Forbidden" }, { status: 403 }),
+    };
+  }
+  if (permission && !can(role, permission)) {
     return {
       error: NextResponse.json({ error: "Forbidden" }, { status: 403 }),
     };

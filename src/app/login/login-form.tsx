@@ -72,7 +72,7 @@ export function LoginForm() {
           </p>
           <CardTitle className="text-lg">Panel sign in</CardTitle>
           <CardDescription>
-            Admin access only. Users and merchants use the Telebirr mini-app.
+            BirrBack admin panel. MFA required. End users and merchants use the Telebirr mini-app.
           </CardDescription>
         </CardHeader>
         <CardContent>

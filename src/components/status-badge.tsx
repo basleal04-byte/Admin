@@ -1,5 +1,10 @@
 import { Badge } from "@/components/ui/badge";
-import type { CampaignStatus, MerchantStatus, TransactionStatus } from "@/types";
+import type {
+  CampaignStatus,
+  MerchantStatus,
+  TransactionStatus,
+  WebhookStatus,
+} from "@/types";
 
 const merchantMap: Record<
   MerchantStatus,
@@ -8,6 +13,7 @@ const merchantMap: Record<
   active: { label: "Active", variant: "default" },
   pending: { label: "Pending", variant: "warning" },
   suspended: { label: "Suspended", variant: "destructive" },
+  deactivated: { label: "Deactivated", variant: "secondary" },
 };
 
 const txMap: Record<
@@ -18,6 +24,16 @@ const txMap: Record<
   pending: { label: "Pending", variant: "warning" },
   failed: { label: "Failed", variant: "destructive" },
   disputed: { label: "Disputed", variant: "secondary" },
+};
+
+const webhookMap: Record<
+  WebhookStatus,
+  { label: string; variant: "default" | "warning" | "destructive" | "secondary" }
+> = {
+  success: { label: "Success", variant: "default" },
+  failed: { label: "Failed", variant: "destructive" },
+  pending: { label: "Pending", variant: "warning" },
+  duplicate: { label: "Duplicate", variant: "secondary" },
 };
 
 const campaignMap: Record<
@@ -37,6 +53,11 @@ export function MerchantStatusBadge({ status }: { status: MerchantStatus }) {
 
 export function TxStatusBadge({ status }: { status: TransactionStatus }) {
   const cfg = txMap[status];
+  return <Badge variant={cfg.variant}>{cfg.label}</Badge>;
+}
+
+export function WebhookStatusBadge({ status }: { status: WebhookStatus }) {
+  const cfg = webhookMap[status];
   return <Badge variant={cfg.variant}>{cfg.label}</Badge>;
 }
 

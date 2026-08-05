@@ -1,23 +1,19 @@
 import { NextResponse } from "next/server";
 import { clientIp, requireAdmin } from "@/lib/session";
 import { db } from "@/lib/store";
-import type { CampaignStatus } from "@/types";
+import type { HappyHourCampaign } from "@/types";
 
-type Body = { status: CampaignStatus };
+type Body = { status: HappyHourCampaign["status"] };
 
 export async function PATCH(
   req: Request,
   ctx: { params: Promise<{ id: string }> }
 ) {
-  const auth = await requireAdmin();
+  const auth = await requireAdmin("merchants:write");
   if (auth.error) return auth.error;
 
   const { id } = await ctx.params;
   const body = (await req.json()) as Body;
-  const allowed: CampaignStatus[] = ["active", "paused", "ended", "draft"];
-  if (!allowed.includes(body.status)) {
-    return NextResponse.json({ error: "Invalid status" }, { status: 400 });
-  }
 
   try {
     const campaign = db.setCampaignStatus(

@@ -4,13 +4,13 @@ import { db } from "@/lib/store";
 import type { FeeConfig } from "@/types";
 
 export async function GET() {
-  const auth = await requireAdmin();
+  const auth = await requireAdmin("dashboard:read");
   if (auth.error) return auth.error;
   return NextResponse.json(db.getFees());
 }
 
 export async function PUT(req: Request) {
-  const auth = await requireAdmin();
+  const auth = await requireAdmin("fees:write");
   if (auth.error) return auth.error;
 
   const body = (await req.json()) as Partial<

@@ -7,7 +7,8 @@ import {
   clearLoginFailures,
   recordLoginFailure,
 } from "@/lib/rate-limit";
-import { appendAudit } from "@/lib/store";
+import { appendAudit, db } from "@/lib/store";
+import type { AdminRole } from "@/types";
 
 export const authOptions: NextAuthOptions = {
   session: {
@@ -41,13 +42,13 @@ export const authOptions: NextAuthOptions = {
         }
 
         const user = MOCK_USERS.find((u) => u.email.toLowerCase() === email);
-        if (!user) {
+        if (!user || user.status !== "active") {
           recordLoginFailure(key);
           appendAudit({
             action: "auth.login_failed",
             actor: email || "unknown",
             target: "panel",
-            detail: "Unknown account",
+            detail: "Unknown or disabled account",
           });
           return null;
         }
@@ -75,18 +76,8 @@ export const authOptions: NextAuthOptions = {
           return null;
         }
 
-        if (user.role !== "admin") {
-          recordLoginFailure(key);
-          appendAudit({
-            action: "auth.login_failed",
-            actor: user.email,
-            target: "panel",
-            detail: "Non-admin role cannot access panel",
-          });
-          return null;
-        }
-
         clearLoginFailures(key);
+        db.touchLogin(user.email);
         appendAudit({
           action: "auth.login",
           actor: user.email,
@@ -107,14 +98,14 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
-        token.role = user.role;
+        token.role = user.role as AdminRole;
       }
       return token;
     },
     async session({ session, token }) {
       if (session.user) {
         session.user.id = token.id as string;
-        session.user.role = (token.role as string) ?? "admin";
+        session.user.role = (token.role as AdminRole) ?? "support";
       }
       return session;
     },
