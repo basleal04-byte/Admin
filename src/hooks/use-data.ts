@@ -78,16 +78,16 @@ export function useOverview() {
 
 export function useMerchants() {
   const loader = useCallback(() => api<Merchant[]>("/api/admin/merchants"), []);
-  const state = useAsyncResource(loader);
+  const { data, loading, error, refetch } = useAsyncResource(loader);
   const setStatus = useCallback(
     async (id: string, status: MerchantStatus) => {
       await api(`/api/admin/merchants/${id}`, {
         method: "PATCH",
         body: JSON.stringify({ status }),
       });
-      await state.refetch();
+      await refetch();
     },
-    [state.refetch]
+    [refetch]
   );
   const update = useCallback(
     async (id: string, patch: { cashbackRate?: number; category?: string }) => {
@@ -95,11 +95,11 @@ export function useMerchants() {
         method: "PATCH",
         body: JSON.stringify(patch),
       });
-      await state.refetch();
+      await refetch();
     },
-    [state.refetch]
+    [refetch]
   );
-  return { ...state, setStatus, update };
+  return { data, loading, error, refetch, setStatus, update };
 }
 
 export function useMerchant(id: string) {
@@ -132,16 +132,16 @@ export function useConsumer(id: string) {
       }>(`/api/admin/users/${id}`),
     [id]
   );
-  const state = useAsyncResource(loader);
+  const { data, loading, error, refetch } = useAsyncResource(loader);
   const setStatus = useCallback(
     async (status: ConsumerStatus) => {
       await api(`/api/admin/users/${id}`, {
         method: "PATCH",
         body: JSON.stringify({ status }),
       });
-      await state.refetch();
+      await refetch();
     },
-    [id, state.refetch]
+    [id, refetch]
   );
   const adjustPoints = useCallback(
     async (points: number, reason: string) => {
@@ -149,11 +149,11 @@ export function useConsumer(id: string) {
         method: "POST",
         body: JSON.stringify({ points, reason }),
       });
-      await state.refetch();
+      await refetch();
     },
-    [id, state.refetch]
+    [id, refetch]
   );
-  return { ...state, setStatus, adjustPoints };
+  return { data, loading, error, refetch, setStatus, adjustPoints };
 }
 
 export function useTransactionsBundle() {
@@ -170,15 +170,15 @@ export function useTransactionsBundle() {
       }>("/api/admin/transactions"),
     []
   );
-  const state = useAsyncResource(loader);
+  const { data, loading, error, refetch } = useAsyncResource(loader);
   const reprocess = useCallback(
     async (id: string) => {
       await api(`/api/admin/transactions/${id}/reprocess`, { method: "POST" });
-      await state.refetch();
+      await refetch();
     },
-    [state.refetch]
+    [refetch]
   );
-  return { ...state, reprocess };
+  return { data, loading, error, refetch, reprocess };
 }
 
 export function useEscrow() {
@@ -191,12 +191,12 @@ export function useEscrow() {
       }>("/api/admin/escrow"),
     []
   );
-  const state = useAsyncResource(loader);
+  const { data, loading, error, refetch } = useAsyncResource(loader);
   const reconcile = useCallback(async () => {
     await api("/api/admin/escrow", { method: "POST" });
-    await state.refetch();
-  }, [state.refetch]);
-  return { ...state, reconcile };
+    await refetch();
+  }, [refetch]);
+  return { data, loading, error, refetch, reconcile };
 }
 
 export function useRedemptions() {
@@ -209,15 +209,15 @@ export function useRedemptions() {
       }>("/api/admin/redemptions"),
     []
   );
-  const state = useAsyncResource(loader);
+  const { data, loading, error, refetch } = useAsyncResource(loader);
   const retry = useCallback(
     async (id: string) => {
       await api(`/api/admin/redemptions/${id}/retry`, { method: "POST" });
-      await state.refetch();
+      await refetch();
     },
-    [state.refetch]
+    [refetch]
   );
-  return { ...state, retry };
+  return { data, loading, error, refetch, retry };
 }
 
 export function useExpiry() {
@@ -230,16 +230,16 @@ export function useExpiry() {
       }>("/api/admin/expiry"),
     []
   );
-  const state = useAsyncResource(loader);
+  const { data, loading, error, refetch } = useAsyncResource(loader);
   const remind = useCallback(
     async (userId: string) => {
       await api("/api/admin/expiry", {
         method: "POST",
         body: JSON.stringify({ action: "remind", userId }),
       });
-      await state.refetch();
+      await refetch();
     },
-    [state.refetch]
+    [refetch]
   );
   const extend = useCallback(
     async (userIds: string[], days: number, reason: string) => {
@@ -247,11 +247,11 @@ export function useExpiry() {
         method: "POST",
         body: JSON.stringify({ action: "extend", userIds, days, reason }),
       });
-      await state.refetch();
+      await refetch();
     },
-    [state.refetch]
+    [refetch]
   );
-  return { ...state, remind, extend };
+  return { data, loading, error, refetch, remind, extend };
 }
 
 export function useBrand() {
@@ -262,13 +262,13 @@ export function useBrand() {
       ),
     []
   );
-  const state = useAsyncResource(loader);
+  const { data, loading, error, refetch } = useAsyncResource(loader);
   const create = useCallback(
     async (body: Record<string, unknown>) => {
       await api("/api/admin/brand", { method: "POST", body: JSON.stringify(body) });
-      await state.refetch();
+      await refetch();
     },
-    [state.refetch]
+    [refetch]
   );
   const invoice = useCallback(
     async (campaignId: string) => {
@@ -276,11 +276,11 @@ export function useBrand() {
         method: "PUT",
         body: JSON.stringify({ campaignId }),
       });
-      await state.refetch();
+      await refetch();
     },
-    [state.refetch]
+    [refetch]
   );
-  return { ...state, create, invoice };
+  return { data, loading, error, refetch, create, invoice };
 }
 
 export function useFis() {
@@ -293,18 +293,18 @@ export function useFis() {
       }>("/api/admin/fis"),
     []
   );
-  const state = useAsyncResource(loader);
+  const { data, loading, error, refetch } = useAsyncResource(loader);
   const flag = useCallback(
     async (merchantId: string, reason: string) => {
       await api("/api/admin/fis", {
         method: "POST",
         body: JSON.stringify({ merchantId, reason }),
       });
-      await state.refetch();
+      await refetch();
     },
-    [state.refetch]
+    [refetch]
   );
-  return { ...state, flag };
+  return { data, loading, error, refetch, flag };
 }
 
 export function useWebhooks() {
@@ -328,7 +328,7 @@ export function usePush() {
       ),
     []
   );
-  const state = useAsyncResource(loader);
+  const { data, loading, error, refetch } = useAsyncResource(loader);
   const send = useCallback(
     async (input: {
       title: string;
@@ -340,11 +340,11 @@ export function usePush() {
         method: "POST",
         body: JSON.stringify(input),
       });
-      await state.refetch();
+      await refetch();
     },
-    [state.refetch]
+    [refetch]
   );
-  return { ...state, send };
+  return { data, loading, error, refetch, send };
 }
 
 export function useReports() {
@@ -366,23 +366,23 @@ export function useAdmins() {
     () => api<Omit<PanelUser, "passwordHash">[]>("/api/admin/admins"),
     []
   );
-  const state = useAsyncResource(loader);
+  const { data, loading, error, refetch } = useAsyncResource(loader);
   const setStatus = useCallback(
     async (id: string, status: "active" | "disabled") => {
       await api("/api/admin/admins", {
         method: "PATCH",
         body: JSON.stringify({ id, status }),
       });
-      await state.refetch();
+      await refetch();
     },
-    [state.refetch]
+    [refetch]
   );
-  return { ...state, setStatus };
+  return { data, loading, error, refetch, setStatus };
 }
 
 export function useFees() {
   const loader = useCallback(() => api<FeeConfig>("/api/admin/fees"), []);
-  const state = useAsyncResource(loader);
+  const { data, loading, error, refetch } = useAsyncResource(loader);
   const save = useCallback(
     async (
       patch: Partial<
@@ -396,11 +396,11 @@ export function useFees() {
         method: "PUT",
         body: JSON.stringify(patch),
       });
-      await state.refetch();
+      await refetch();
     },
-    [state.refetch]
+    [refetch]
   );
-  return { ...state, save };
+  return { data, loading, error, refetch, save };
 }
 
 export function useAudit() {
@@ -413,16 +413,16 @@ export function useCampaigns() {
     () => api<HappyHourCampaign[]>("/api/admin/campaigns"),
     []
   );
-  const state = useAsyncResource(loader);
+  const { data, loading, error, refetch } = useAsyncResource(loader);
   const setStatus = useCallback(
     async (id: string, status: HappyHourCampaign["status"]) => {
       await api(`/api/admin/campaigns/${id}`, {
         method: "PATCH",
         body: JSON.stringify({ status }),
       });
-      await state.refetch();
+      await refetch();
     },
-    [state.refetch]
+    [refetch]
   );
-  return { ...state, setStatus };
+  return { data, loading, error, refetch, setStatus };
 }
