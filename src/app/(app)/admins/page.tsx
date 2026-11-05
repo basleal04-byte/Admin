@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { AddAdminDialog } from "@/components/admins/add-admin-dialog";
+import { ChangePasswordDialog } from "@/components/admins/change-password-dialog";
 import { Guard } from "@/components/guard";
 import { ErrorState, TableSkeleton } from "@/components/states";
 import { useAdmins } from "@/hooks/use-data";
@@ -20,6 +21,7 @@ export default function AdminsPage() {
   const [disableId, setDisableId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
+  const [passwordOpen, setPasswordOpen] = useState(false);
 
   const currentEmail = session?.user?.email;
   const currentId = session?.user?.id;
@@ -130,7 +132,13 @@ export default function AdminsPage() {
                                 </Button>
                               </Guard>
                             ) : isSelf ? (
-                              <span className="text-xs text-stone-400">You</span>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => setPasswordOpen(true)}
+                              >
+                                Change password
+                              </Button>
                             ) : null}
                           </td>
                         </tr>
@@ -148,6 +156,11 @@ export default function AdminsPage() {
         open={addOpen}
         onOpenChange={setAddOpen}
         onCreate={handleCreate}
+      />
+
+      <ChangePasswordDialog
+        open={passwordOpen}
+        onOpenChange={setPasswordOpen}
       />
 
       <ConfirmDialog

@@ -373,7 +373,8 @@ export type AuditAction =
   | "push.send"
   | "fees.update"
   | "admin.create"
-  | "admin.disable";
+  | "admin.disable"
+  | "admin.password_change";
 
 export type AuditEvent = {
   id: string;

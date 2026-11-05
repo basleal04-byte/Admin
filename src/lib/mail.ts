@@ -29,7 +29,7 @@ function buildInviteBody(input: AdminInviteMailInput) {
     `Role: ${input.role}`,
     mfaLine.trimEnd(),
     "",
-    "Change this password after your first successful sign-in when that option is available.",
+    "After you sign in, open Admins and use Change password on your own row to replace this temporary password.",
     "Do not forward this email. If you did not expect this account, contact your panel administrator.",
     "",
     "— BirrBack Admin Panel",

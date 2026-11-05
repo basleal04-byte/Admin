@@ -696,6 +696,32 @@ export const db = {
     return admins.find((a) => a.email.toLowerCase() === key);
   },
 
+  findAdminById(id: string): PanelUser | undefined {
+    return admins.find((a) => a.id === id);
+  },
+
+  changeAdminPassword(
+    id: string,
+    passwordHash: string,
+    actor: string,
+    ip: string
+  ): Omit<PanelUser, "passwordHash"> {
+    const a = admins.find((x) => x.id === id);
+    if (!a) throw new Error("Admin not found");
+    if (a.status !== "active") throw new Error("Account is disabled");
+    a.passwordHash = passwordHash;
+    appendAudit({
+      action: "admin.password_change",
+      actor,
+      target: id,
+      detail: `Password changed for ${a.email}`,
+      ip,
+    });
+    const { passwordHash: _hash, ...rest } = a;
+    void _hash;
+    return rest;
+  },
+
   createAdmin(
     input: {
       email: string;
