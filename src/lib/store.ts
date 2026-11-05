@@ -691,6 +691,65 @@ export const db = {
     });
   },
 
+  findAdminByEmail(email: string): PanelUser | undefined {
+    const key = email.trim().toLowerCase();
+    return admins.find((a) => a.email.toLowerCase() === key);
+  },
+
+  createAdmin(
+    input: {
+      email: string;
+      name: string;
+      passwordHash: string;
+      role: AdminRole;
+    },
+    actor: string,
+    ip: string
+  ): Omit<PanelUser, "passwordHash"> {
+    const email = input.email.trim().toLowerCase();
+    const name = input.name.trim();
+    if (!email || !name) throw new Error("Name and email are required");
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      throw new Error("Enter a valid email address");
+    }
+    if (admins.some((a) => a.email.toLowerCase() === email)) {
+      throw new Error("An admin with this email already exists");
+    }
+    const allowed: AdminRole[] = ["super_admin", "ops", "finance", "support"];
+    if (!allowed.includes(input.role)) {
+      throw new Error("Invalid role");
+    }
+
+    const admin: PanelUser = {
+      id: nid("adm"),
+      email,
+      name,
+      passwordHash: input.passwordHash,
+      role: input.role,
+      mfaEnabled: true,
+      lastLoginAt: null,
+      status: "active",
+    };
+    admins.push(admin);
+
+    appendAudit({
+      action: "admin.create",
+      actor,
+      target: admin.id,
+      detail: `Created admin ${admin.email} with role ${admin.role}`,
+      ip,
+    });
+
+    const { passwordHash, ...rest } = admin;
+    void passwordHash;
+    return rest;
+  },
+
+  removeAdmin(id: string) {
+    const idx = admins.findIndex((a) => a.id === id);
+    if (idx >= 0) admins.splice(idx, 1);
+  },
+
   setAdminStatus(id: string, status: PanelUser["status"], actor: string, ip: string) {
     const a = admins.find((x) => x.id === id);
     if (!a) throw new Error("Admin not found");

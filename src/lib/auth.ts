@@ -1,6 +1,6 @@
 import type { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
-import { MOCK_MFA_CODE, MOCK_USERS } from "@/lib/mock-data";
+import { MOCK_MFA_CODE } from "@/lib/mock-data";
 import { verifyPassword } from "@/lib/password";
 import {
   assertLoginAllowed,
@@ -41,7 +41,7 @@ export const authOptions: NextAuthOptions = {
           return null;
         }
 
-        const user = MOCK_USERS.find((u) => u.email.toLowerCase() === email);
+        const user = db.findAdminByEmail(email);
         if (!user || user.status !== "active") {
           recordLoginFailure(key);
           appendAudit({

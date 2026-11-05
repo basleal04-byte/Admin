@@ -8,15 +8,18 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { AddAdminDialog } from "@/components/admins/add-admin-dialog";
 import { Guard } from "@/components/guard";
 import { ErrorState, TableSkeleton } from "@/components/states";
 import { useAdmins } from "@/hooks/use-data";
+import type { AdminRole } from "@/types";
 
 export default function AdminsPage() {
   const { data: session } = useSession();
-  const { data, loading, error, setStatus } = useAdmins();
+  const { data, loading, error, setStatus, create } = useAdmins();
   const [disableId, setDisableId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
 
   const currentEmail = session?.user?.email;
   const currentId = session?.user?.id;
@@ -32,6 +35,14 @@ export default function AdminsPage() {
     }
   }
 
+  async function handleCreate(input: {
+    name: string;
+    email: string;
+    role: AdminRole;
+  }) {
+    return create(input);
+  }
+
   return (
     <>
       <PageHeader
@@ -39,9 +50,17 @@ export default function AdminsPage() {
         description="Panel users and roles"
       />
       <main className="flex-1 space-y-4 p-4 sm:p-6 lg:p-8">
-        <p className="rounded-lg border border-stone-200 bg-stone-50 px-4 py-3 text-sm text-stone-600">
-          MFA is required for all admin accounts.
-        </p>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <p className="rounded-lg border border-stone-200 bg-stone-50 px-4 py-3 text-sm text-stone-600 sm:flex-1">
+            MFA is required for all admin accounts. New admins receive a randomly
+            generated password by email only.
+          </p>
+          <Guard permission="admins:write">
+            <Button type="button" className="shrink-0" onClick={() => setAddOpen(true)}>
+              Add admin
+            </Button>
+          </Guard>
+        </div>
 
         <Card>
           <CardContent className="p-0">
@@ -100,6 +119,16 @@ export default function AdminsPage() {
                                   Disable
                                 </Button>
                               </Guard>
+                            ) : a.status === "disabled" && !isSelf ? (
+                              <Guard permission="admins:write">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => setStatus(a.id, "active")}
+                                >
+                                  Enable
+                                </Button>
+                              </Guard>
                             ) : isSelf ? (
                               <span className="text-xs text-stone-400">You</span>
                             ) : null}
@@ -114,6 +143,12 @@ export default function AdminsPage() {
           </CardContent>
         </Card>
       </main>
+
+      <AddAdminDialog
+        open={addOpen}
+        onOpenChange={setAddOpen}
+        onCreate={handleCreate}
+      />
 
       <ConfirmDialog
         open={!!disableId}

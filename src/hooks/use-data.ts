@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/client";
 import type {
+  AdminRole,
   AuditEvent,
   BrandCampaign,
   BrandInvoice,
@@ -377,7 +378,22 @@ export function useAdmins() {
     },
     [refetch]
   );
-  return { data, loading, error, refetch, setStatus };
+  const create = useCallback(
+    async (input: { name: string; email: string; role: AdminRole }) => {
+      const result = await api<{
+        admin: Omit<PanelUser, "passwordHash">;
+        emailSent: boolean;
+        message: string;
+      }>("/api/admin/admins", {
+        method: "POST",
+        body: JSON.stringify(input),
+      });
+      await refetch();
+      return result;
+    },
+    [refetch]
+  );
+  return { data, loading, error, refetch, setStatus, create };
 }
 
 export function useFees() {
