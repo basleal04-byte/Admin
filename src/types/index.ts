@@ -10,6 +10,8 @@ export type Permission =
   | "dashboard:read"
   | "merchants:read"
   | "merchants:write"
+  /** Final merchant activate / status decision. Ops may request only. */
+  | "merchants:approve"
   | "users:read"
   | "users:write"
   | "users:points"

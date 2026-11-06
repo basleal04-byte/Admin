@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
+import { can } from "@/lib/permissions";
 import { requestMeta } from "@/lib/request-meta";
 import { requireAdmin } from "@/lib/session";
 import { db } from "@/lib/store";
+import type { AdminRole } from "@/types";
 
 export async function POST(
   req: Request,
@@ -24,6 +26,21 @@ export async function POST(
   }
 
   try {
+    const pending = db.getApproval(id);
+    const role = (auth.session.user.role ?? "support") as AdminRole;
+    if (
+      pending.kind === "merchant.status" &&
+      !can(role, "merchants:approve")
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Merchant status decisions require the merchant approver role",
+        },
+        { status: 403 }
+      );
+    }
+
     const meta = requestMeta(req, auth.session);
     const item = db.decideApproval(
       id,

@@ -8,7 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { Guard } from "@/components/guard";
+import { Guard, useCan } from "@/components/guard";
 import { MerchantStatusBadge } from "@/components/status-badge";
 import { ErrorState, TableSkeleton } from "@/components/states";
 import { useMerchants } from "@/hooks/use-data";
@@ -29,44 +29,81 @@ type PendingAction = {
   status: MerchantStatus;
 } | null;
 
-const actionCopy: Record<
+function actionCopy(
+  canApprove: boolean
+): Record<
   MerchantStatus,
-  { title: string; description: (name: string) => string; label: string; destructive: boolean }
-> = {
-  active: {
-    title: "Approve merchant",
-    description: (name) => `Activate ${name} and mark KYC verified.`,
-    label: "Approve",
-    destructive: false,
-  },
-  suspended: {
-    title: "Suspend merchant",
-    description: (name) => `Suspend ${name}. New payments will be blocked.`,
-    label: "Suspend",
-    destructive: true,
-  },
-  deactivated: {
-    title: "Deactivate merchant",
-    description: (name) => `Permanently deactivate ${name}.`,
-    label: "Deactivate",
-    destructive: true,
-  },
-  pending: {
-    title: "Update merchant",
-    description: (name) => `Set ${name} to pending.`,
-    label: "Confirm",
-    destructive: false,
-  },
-};
+  {
+    title: string;
+    description: (name: string) => string;
+    label: string;
+    destructive: boolean;
+  }
+> {
+  return {
+    active: canApprove
+      ? {
+          title: "Approve merchant",
+          description: (name) =>
+            `Activate ${name} and mark KYC verified. This is the final compliance decision.`,
+          label: "Approve",
+          destructive: false,
+        }
+      : {
+          title: "Request merchant activation",
+          description: (name) =>
+            `Submit ${name} for compliance approval. Activation will not take effect until a merchant approver confirms it.`,
+          label: "Request activation",
+          destructive: false,
+        },
+    suspended: canApprove
+      ? {
+          title: "Suspend merchant",
+          description: (name) => `Suspend ${name}. New payments will be blocked.`,
+          label: "Suspend",
+          destructive: true,
+        }
+      : {
+          title: "Request merchant suspension",
+          description: (name) =>
+            `Submit suspension of ${name} for compliance approval.`,
+          label: "Request suspend",
+          destructive: true,
+        },
+    deactivated: canApprove
+      ? {
+          title: "Deactivate merchant",
+          description: (name) => `Permanently deactivate ${name}.`,
+          label: "Deactivate",
+          destructive: true,
+        }
+      : {
+          title: "Request merchant deactivation",
+          description: (name) =>
+            `Submit deactivation of ${name} for compliance approval.`,
+          label: "Request deactivate",
+          destructive: true,
+        },
+    pending: {
+      title: "Update merchant",
+      description: (name) => `Set ${name} to pending.`,
+      label: "Confirm",
+      destructive: false,
+    },
+  };
+}
 
 export default function MerchantsPage() {
   const { data, loading, error, setStatus } = useMerchants();
+  const canApprove = useCan("merchants:approve");
+  const copyFor = useMemo(() => actionCopy(canApprove), [canApprove]);
   const [q, setQ] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | MerchantStatus>("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [cityFilter, setCityFilter] = useState("all");
   const [pending, setPending] = useState<PendingAction>(null);
   const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const categories = useMemo(
     () => [...new Set((data ?? []).map((m) => m.category))].sort(),
@@ -97,23 +134,44 @@ export default function MerchantsPage() {
   async function confirm() {
     if (!pending) return;
     setBusy(true);
+    setNotice(null);
     try {
-      await setStatus(pending.id, pending.status);
+      const result = await setStatus(pending.id, pending.status);
+      if (
+        result &&
+        typeof result === "object" &&
+        "pendingApproval" in result &&
+        result.pendingApproval
+      ) {
+        setNotice(
+          result.message ||
+            "Submitted for compliance approval. Merchant status is unchanged until approved."
+        );
+      }
       setPending(null);
     } finally {
       setBusy(false);
     }
   }
 
-  const copy = pending ? actionCopy[pending.status] : null;
+  const copy = pending ? copyFor[pending.status] : null;
 
   return (
     <>
       <PageHeader
         title="Merchants"
-        description="Approve, suspend, and review partner KYC"
+        description={
+          canApprove
+            ? "Final merchant activation, suspension, and KYC decisions"
+            : "Review partners and request activation — final approval is a separate compliance step"
+        }
       />
       <main className="flex-1 space-y-4 p-4 sm:p-6 lg:p-8">
+        {notice ? (
+          <p className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            {notice}
+          </p>
+        ) : null}
         <div className="flex flex-col gap-3">
           <Input
             placeholder="Search name, city, category, short code"
@@ -229,7 +287,7 @@ export default function MerchantsPage() {
                                     })
                                   }
                                 >
-                                  Approve
+                                  {canApprove ? "Approve" : "Request activation"}
                                 </Button>
                               ) : null}
                               {m.status !== "suspended" && m.status !== "deactivated" ? (
@@ -244,7 +302,7 @@ export default function MerchantsPage() {
                                     })
                                   }
                                 >
-                                  Suspend
+                                  {canApprove ? "Suspend" : "Request suspend"}
                                 </Button>
                               ) : null}
                               {m.status !== "deactivated" ? (
@@ -259,7 +317,7 @@ export default function MerchantsPage() {
                                     })
                                   }
                                 >
-                                  Deactivate
+                                  {canApprove ? "Deactivate" : "Request deactivate"}
                                 </Button>
                               ) : null}
                             </div>

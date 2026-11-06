@@ -5,6 +5,7 @@ const ALL: Permission[] = [
   "dashboard:read",
   "merchants:read",
   "merchants:write",
+  "merchants:approve",
   "users:read",
   "users:write",
   "users:points",
@@ -37,6 +38,7 @@ const ROLE_PERMISSIONS: Record<AdminRole, Permission[]> = {
   ops: [
     "dashboard:read",
     "merchants:read",
+    // Prepare / recommend only — final activate requires merchants:approve
     "merchants:write",
     "users:read",
     "transactions:read",

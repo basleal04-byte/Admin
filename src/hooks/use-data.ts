@@ -82,21 +82,27 @@ export function useMerchants() {
   const { data, loading, error, refetch } = useAsyncResource(loader);
   const setStatus = useCallback(
     async (id: string, status: MerchantStatus) => {
-      await api(`/api/admin/merchants/${id}`, {
+      const result = await api<
+        Merchant | { pendingApproval?: boolean; message?: string }
+      >(`/api/admin/merchants/${id}`, {
         method: "PATCH",
         body: JSON.stringify({ status }),
       });
       await refetch();
+      return result;
     },
     [refetch]
   );
   const update = useCallback(
     async (id: string, patch: { cashbackRate?: number; category?: string }) => {
-      await api(`/api/admin/merchants/${id}`, {
+      const result = await api<
+        Merchant | { pendingApproval?: boolean; message?: string }
+      >(`/api/admin/merchants/${id}`, {
         method: "PATCH",
         body: JSON.stringify(patch),
       });
       await refetch();
+      return result;
     },
     [refetch]
   );

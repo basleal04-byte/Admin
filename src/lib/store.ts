@@ -241,7 +241,13 @@ export const db = {
     };
   },
 
-  setMerchantStatus(id: string, status: MerchantStatus, actor: string, ip: string) {
+  setMerchantStatus(
+    id: string,
+    status: MerchantStatus,
+    actor: string,
+    ip: string,
+    meta?: { requestedBy?: string; reason?: string }
+  ) {
     const m = merchants.find((x) => x.id === id);
     if (!m) throw new Error("Merchant not found");
     const previous = m.status;
@@ -253,13 +259,18 @@ export const db = {
         : status === "suspended"
           ? "merchant.suspend"
           : "merchant.deactivate";
+    const requested =
+      meta?.requestedBy && meta.requestedBy !== actor
+        ? ` (requested by ${meta.requestedBy})`
+        : "";
     appendAudit({
       action,
       actor,
       target: id,
-      detail: `${status} ${m.name}`,
+      detail: `${status} ${m.name}${requested}`,
       ip,
       result: "success",
+      reason: meta?.reason,
       oldValue: { status: previous },
       newValue: { status },
     });
@@ -953,7 +964,7 @@ export const db = {
     if (item.status !== "pending") throw new Error("Approval already decided");
 
     if (decision === "approved") {
-      applyApprovalPayload(item);
+      applyApprovalPayload(item, decidedBy);
     }
 
     item.status = decision;
@@ -1028,9 +1039,10 @@ export const db = {
   },
 };
 
-function applyApprovalPayload(item: PendingApproval) {
+function applyApprovalPayload(item: PendingApproval, decidedBy: string) {
   const p = item.payload;
-  const actor = item.actor;
+  // Attribute the applied change to the approver, not the requester.
+  const actor = decidedBy;
   const ip = item.ip;
   switch (item.kind) {
     case "fees.update":
@@ -1067,7 +1079,11 @@ function applyApprovalPayload(item: PendingApproval) {
         String(p.id),
         p.status as MerchantStatus,
         actor,
-        ip
+        ip,
+        {
+          requestedBy: item.actor,
+          reason: item.reason ?? `Approved ${item.kind} from ${item.actor}`,
+        }
       );
       break;
     case "merchant.update":

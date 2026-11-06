@@ -65,8 +65,10 @@ export default function ApprovalsPage() {
       />
       <main className="flex-1 space-y-4 p-4 sm:p-6 lg:p-8">
         <p className="rounded-lg border border-stone-200 bg-stone-50 px-4 py-3 text-sm text-stone-600">
-          Monetary and account changes from non-super-admin roles do not apply
-          until a super admin approves them here.
+          Monetary and account changes from ops, finance, and support do not
+          apply until a dedicated approver confirms them here. Merchant
+          activation is a compliance decision — ops may request it; only a
+          merchant approver can finalize it.
         </p>
         <Card>
           <CardContent className="p-0">

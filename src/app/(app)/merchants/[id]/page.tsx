@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { Guard } from "@/components/guard";
+import { Guard, useCan } from "@/components/guard";
 import {
   CampaignStatusBadge,
   MerchantStatusBadge,
@@ -25,12 +25,14 @@ export default function MerchantDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { data, loading, error, refetch } = useMerchant(id);
   const { update, setStatus } = useMerchants();
+  const canApprove = useCan("merchants:approve");
   const [cashbackPct, setCashbackPct] = useState("");
   const [category, setCategory] = useState("");
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [pendingStatus, setPendingStatus] = useState<MerchantStatus | null>(null);
   const [statusBusy, setStatusBusy] = useState(false);
+  const [statusNotice, setStatusNotice] = useState<string | null>(null);
 
   const merchant = data?.merchant;
 
@@ -66,8 +68,20 @@ export default function MerchantDetailPage() {
   async function confirmStatus() {
     if (!merchant || !pendingStatus) return;
     setStatusBusy(true);
+    setStatusNotice(null);
     try {
-      await setStatus(merchant.id, pendingStatus);
+      const result = await setStatus(merchant.id, pendingStatus);
+      if (
+        result &&
+        typeof result === "object" &&
+        "pendingApproval" in result &&
+        result.pendingApproval
+      ) {
+        setStatusNotice(
+          result.message ||
+            "Submitted for compliance approval. Merchant status is unchanged until approved."
+        );
+      }
       await refetch();
       setPendingStatus(null);
     } finally {
@@ -156,6 +170,11 @@ export default function MerchantDetailPage() {
                       {saveError ? (
                         <p className="sm:col-span-2 text-sm text-red-700">{saveError}</p>
                       ) : null}
+                      {statusNotice ? (
+                        <p className="sm:col-span-2 text-sm text-amber-800">
+                          {statusNotice}
+                        </p>
+                      ) : null}
                       <div className="sm:col-span-2 flex flex-wrap gap-2">
                         <Button onClick={saveProfile} disabled={saving}>
                           {saving ? "Saving" : "Save changes"}
@@ -165,7 +184,7 @@ export default function MerchantDetailPage() {
                             variant="outline"
                             onClick={() => setPendingStatus("active")}
                           >
-                            Approve
+                            {canApprove ? "Approve" : "Request activation"}
                           </Button>
                         ) : null}
                         {merchant.status !== "suspended" &&
@@ -174,7 +193,7 @@ export default function MerchantDetailPage() {
                             variant="outline"
                             onClick={() => setPendingStatus("suspended")}
                           >
-                            Suspend
+                            {canApprove ? "Suspend" : "Request suspend"}
                           </Button>
                         ) : null}
                       </div>
@@ -311,15 +330,35 @@ export default function MerchantDetailPage() {
 
       <ConfirmDialog
         open={!!pendingStatus}
-        title={pendingStatus === "active" ? "Approve merchant" : "Suspend merchant"}
+        title={
+          pendingStatus === "active"
+            ? canApprove
+              ? "Approve merchant"
+              : "Request merchant activation"
+            : canApprove
+              ? "Suspend merchant"
+              : "Request merchant suspension"
+        }
         description={
           merchant && pendingStatus === "active"
-            ? `Activate ${merchant.name}.`
+            ? canApprove
+              ? `Activate ${merchant.name} and mark KYC verified. This is the final compliance decision.`
+              : `Submit ${merchant.name} for compliance approval. Activation will not take effect until a merchant approver confirms it.`
             : merchant
-              ? `Suspend ${merchant.name}.`
+              ? canApprove
+                ? `Suspend ${merchant.name}.`
+                : `Submit suspension of ${merchant.name} for compliance approval.`
               : ""
         }
-        confirmLabel={pendingStatus === "active" ? "Approve" : "Suspend"}
+        confirmLabel={
+          pendingStatus === "active"
+            ? canApprove
+              ? "Approve"
+              : "Request activation"
+            : canApprove
+              ? "Suspend"
+              : "Request suspend"
+        }
         destructive={pendingStatus === "suspended"}
         loading={statusBusy}
         onConfirm={confirmStatus}
