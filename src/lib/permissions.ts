@@ -50,7 +50,7 @@ const ROLE_PERMISSIONS: Record<AdminRole, Permission[]> = {
     "push:write",
     "reports:read",
     "fis:read",
-    "audit:read",
+    // No audit:read — security log is security-admin only
     "approvals:read",
   ],
   finance: [
@@ -66,7 +66,6 @@ const ROLE_PERMISSIONS: Record<AdminRole, Permission[]> = {
     "brand:read",
     "reports:read",
     "fees:write",
-    "audit:read",
     "approvals:read",
   ],
   support: [
@@ -80,7 +79,6 @@ const ROLE_PERMISSIONS: Record<AdminRole, Permission[]> = {
     "expiry:write",
     "push:read",
     "push:write",
-    "audit:read",
     "approvals:read",
   ],
   end_user: ["profile:read"],
