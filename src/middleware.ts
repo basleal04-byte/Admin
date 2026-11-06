@@ -4,13 +4,16 @@ export default withAuth({
   callbacks: {
     authorized: ({ token }) =>
       !!token?.role &&
-      ["super_admin", "ops", "finance", "support"].includes(token.role as string),
+      ["super_admin", "ops", "finance", "support", "end_user"].includes(
+        token.role as string
+      ),
   },
 });
 
 export const config = {
   matcher: [
     "/",
+    "/profile",
     "/merchants/:path*",
     "/users/:path*",
     "/transactions/:path*",
@@ -25,6 +28,7 @@ export const config = {
     "/admins/:path*",
     "/fees/:path*",
     "/audit/:path*",
+    "/approvals/:path*",
     "/campaigns/:path*",
   ],
 };

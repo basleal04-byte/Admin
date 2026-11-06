@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { signIn } from "next-auth/react";
+import { getSession, signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -45,7 +45,10 @@ export function LoginForm() {
       return;
     }
 
-    router.replace("/");
+    const session = await getSession();
+    const dest =
+      session?.user?.role === "end_user" ? "/profile" : "/";
+    router.replace(dest);
     router.refresh();
   }
 
@@ -112,6 +115,12 @@ export function LoginForm() {
               <Button type="submit" className="w-full">
                 Continue
               </Button>
+              <a
+                href="/forgot-password"
+                className="block text-center text-sm text-stone-500 hover:text-stone-800"
+              >
+                Forgot password?
+              </a>
             </form>
           ) : (
             <form onSubmit={submitMfa} className="space-y-4">

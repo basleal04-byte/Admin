@@ -85,13 +85,25 @@ export default function FeesPage() {
 
     setSaving(true);
     try {
-      await save({
+      const saved = await save({
         marketingFeeRate: result.marketingFeeRate,
         userShare: result.userShare,
         birrbackShare: result.birrbackShare,
         pointsPerEtb: result.pointsPerEtb,
       });
-      setMessage("Fee config saved.");
+      if (
+        saved &&
+        typeof saved === "object" &&
+        "pendingApproval" in saved &&
+        saved.pendingApproval
+      ) {
+        setMessage(
+          saved.message ||
+            "Submitted for super admin approval. Fees are unchanged until approved."
+        );
+      } else {
+        setMessage("Fee config saved.");
+      }
       setConfirmOpen(false);
     } catch (err) {
       setFormError(err instanceof Error ? err.message : "Failed to save");

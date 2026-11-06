@@ -29,12 +29,15 @@ import {
   SEED_UPLIFT,
   SEED_USER_MERCHANTS,
   SEED_WEBHOOK_LOGS,
+  SEED_APPROVALS,
   MOCK_USERS,
 } from "@/lib/mock-data";
 import type {
   AdminRole,
+  ApprovalKind,
   AuditAction,
   AuditEvent,
+  AuditResult,
   BrandCampaign,
   Consumer,
   ConsumerStatus,
@@ -44,10 +47,12 @@ import type {
   Merchant,
   MerchantStatus,
   PanelUser,
+  PendingApproval,
   PushAudience,
   Redemption,
   Transaction,
 } from "@/types";
+import { stringifyValue } from "@/lib/request-meta";
 
 const merchants = structuredClone(SEED_MERCHANTS);
 const consumers = structuredClone(SEED_CONSUMERS);
@@ -78,8 +83,18 @@ const monthlyReports = structuredClone(SEED_MONTHLY_REPORTS);
 const uplift = structuredClone(SEED_UPLIFT);
 const cohorts = structuredClone(SEED_COHORTS);
 let feeConfig = structuredClone(SEED_FEE_CONFIG);
-const audit = structuredClone(SEED_AUDIT);
+const audit: AuditEvent[] = structuredClone(SEED_AUDIT).map((e) => ({
+  ...e,
+  result: "success" as AuditResult,
+  oldValue: null as string | null,
+  newValue: null as string | null,
+}));
 const admins = structuredClone(MOCK_USERS);
+const approvals: PendingApproval[] = structuredClone(SEED_APPROVALS);
+const passwordResetTokens = new Map<
+  string,
+  { email: string; expiresAt: number }
+>();
 
 function nid(prefix: string) {
   return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
@@ -88,17 +103,33 @@ function nid(prefix: string) {
 export function appendAudit(input: {
   action: AuditAction;
   actor: string;
+  actorId?: string;
   target: string;
   detail: string;
   ip?: string;
+  userAgent?: string;
+  sessionId?: string;
+  result?: AuditResult;
+  reason?: string;
+  oldValue?: unknown;
+  newValue?: unknown;
 }) {
   audit.unshift({
     id: nid("aud"),
     action: input.action,
     actor: input.actor,
+    actorId: input.actorId,
     target: input.target,
     detail: input.detail,
     ip: input.ip ?? "0.0.0.0",
+    userAgent: input.userAgent,
+    sessionId: input.sessionId,
+    result: input.result ?? "success",
+    reason: input.reason,
+    oldValue:
+      input.oldValue === undefined ? null : stringifyValue(input.oldValue),
+    newValue:
+      input.newValue === undefined ? null : stringifyValue(input.newValue),
     createdAt: new Date().toISOString(),
   });
 }
@@ -213,6 +244,7 @@ export const db = {
   setMerchantStatus(id: string, status: MerchantStatus, actor: string, ip: string) {
     const m = merchants.find((x) => x.id === id);
     if (!m) throw new Error("Merchant not found");
+    const previous = m.status;
     m.status = status;
     if (status === "active") m.kycVerified = true;
     const action =
@@ -227,6 +259,9 @@ export const db = {
       target: id,
       detail: `${status} ${m.name}`,
       ip,
+      result: "success",
+      oldValue: { status: previous },
+      newValue: { status },
     });
     return { ...m };
   },
@@ -240,6 +275,7 @@ export const db = {
     const m = merchants.find((x) => x.id === id);
     if (!m) throw new Error("Merchant not found");
     if (patch.cashbackRate != null) {
+      const previous = m.cashbackRate;
       m.cashbackRate = patch.cashbackRate;
       appendAudit({
         action: "merchant.rate_update",
@@ -247,9 +283,13 @@ export const db = {
         target: id,
         detail: `Cashback rate set to ${patch.cashbackRate * 100}%`,
         ip,
+        result: "success",
+        oldValue: { cashbackRate: previous },
+        newValue: { cashbackRate: patch.cashbackRate },
       });
     }
     if (patch.category != null) {
+      const previous = m.category;
       m.category = patch.category;
       appendAudit({
         action: "merchant.category_update",
@@ -257,6 +297,9 @@ export const db = {
         target: id,
         detail: `Category set to ${patch.category}`,
         ip,
+        result: "success",
+        oldValue: { category: previous },
+        newValue: { category: patch.category },
       });
     }
     return { ...m };
@@ -280,6 +323,7 @@ export const db = {
   setConsumerStatus(id: string, status: ConsumerStatus, actor: string, ip: string) {
     const user = consumers.find((c) => c.id === id);
     if (!user) throw new Error("User not found");
+    const previous = user.status;
     user.status = status;
     appendAudit({
       action: "user.suspend",
@@ -287,6 +331,10 @@ export const db = {
       target: id,
       detail: `User status ${status}`,
       ip,
+      result: "success",
+      reason: `status change to ${status}`,
+      oldValue: { status: previous },
+      newValue: { status },
     });
     return { ...user };
   },
@@ -302,6 +350,7 @@ export const db = {
     if (!points) throw new Error("Points must be non-zero");
     const user = consumers.find((c) => c.id === id);
     if (!user) throw new Error("User not found");
+    const previousBalance = user.pointsBalance;
     user.pointsBalance += points;
     ledger.unshift({
       id: nid("led"),
@@ -319,6 +368,10 @@ export const db = {
       target: id,
       detail: `${points > 0 ? "Credit" : "Debit"} ${Math.abs(points)} BP: ${reason}`,
       ip,
+      result: "success",
+      reason,
+      oldValue: { pointsBalance: previousBalance },
+      newValue: { pointsBalance: user.pointsBalance, delta: points },
     });
     return { ...user };
   },
@@ -663,6 +716,7 @@ export const db = {
     actor: string,
     ip: string
   ) {
+    const previous = { ...feeConfig };
     const next: FeeConfig = {
       ...feeConfig,
       ...patch,
@@ -679,6 +733,19 @@ export const db = {
       target: "fee_config",
       detail: `Fee ${next.marketingFeeRate * 100}%`,
       ip,
+      result: "success",
+      oldValue: {
+        marketingFeeRate: previous.marketingFeeRate,
+        userShare: previous.userShare,
+        birrbackShare: previous.birrbackShare,
+        pointsPerEtb: previous.pointsPerEtb,
+      },
+      newValue: {
+        marketingFeeRate: next.marketingFeeRate,
+        userShare: next.userShare,
+        birrbackShare: next.birrbackShare,
+        pointsPerEtb: next.pointsPerEtb,
+      },
     });
     return { ...feeConfig };
   },
@@ -805,6 +872,281 @@ export const db = {
     const a = admins.find((x) => x.email === email);
     if (a) a.lastLoginAt = new Date().toISOString();
   },
+
+  requestApproval(input: {
+    kind: ApprovalKind;
+    action: AuditAction;
+    actor: string;
+    actorId?: string;
+    actorRole: AdminRole;
+    target: string;
+    payload: Record<string, unknown>;
+    oldValue?: unknown;
+    newValue?: unknown;
+    reason?: string;
+    ip: string;
+    userAgent?: string;
+    sessionId?: string;
+  }): PendingApproval {
+    const item: PendingApproval = {
+      id: nid("apr"),
+      kind: input.kind,
+      action: input.action,
+      actor: input.actor,
+      actorId: input.actorId,
+      actorRole: input.actorRole,
+      target: input.target,
+      payload: input.payload,
+      oldValue:
+        input.oldValue === undefined ? null : stringifyValue(input.oldValue),
+      newValue:
+        input.newValue === undefined ? null : stringifyValue(input.newValue),
+      reason: input.reason,
+      ip: input.ip,
+      userAgent: input.userAgent,
+      sessionId: input.sessionId,
+      status: "pending",
+      createdAt: new Date().toISOString(),
+    };
+    approvals.unshift(item);
+    appendAudit({
+      action: "approval.requested",
+      actor: input.actor,
+      actorId: input.actorId,
+      target: input.target,
+      detail: `Pending ${input.kind} awaiting super_admin approval`,
+      ip: input.ip,
+      userAgent: input.userAgent,
+      sessionId: input.sessionId,
+      result: "pending",
+      reason: input.reason,
+      oldValue: input.oldValue,
+      newValue: input.newValue,
+    });
+    return item;
+  },
+
+  listApprovals(filter?: { status?: PendingApproval["status"]; actor?: string }) {
+    return approvals
+      .filter((a) => (filter?.status ? a.status === filter.status : true))
+      .filter((a) =>
+        filter?.actor ? a.actor.toLowerCase() === filter.actor.toLowerCase() : true
+      )
+      .map((a) => ({ ...a }));
+  },
+
+  getApproval(id: string) {
+    const item = approvals.find((a) => a.id === id);
+    if (!item) throw new Error("Approval not found");
+    return item;
+  },
+
+  decideApproval(
+    id: string,
+    decision: "approved" | "rejected",
+    decidedBy: string,
+    note: string | undefined,
+    meta: { ip: string; userAgent?: string; sessionId?: string }
+  ) {
+    const item = approvals.find((a) => a.id === id);
+    if (!item) throw new Error("Approval not found");
+    if (item.status !== "pending") throw new Error("Approval already decided");
+
+    if (decision === "approved") {
+      applyApprovalPayload(item);
+    }
+
+    item.status = decision;
+    item.decidedAt = new Date().toISOString();
+    item.decidedBy = decidedBy;
+    item.decisionNote = note;
+
+    appendAudit({
+      action: decision === "approved" ? "approval.approved" : "approval.rejected",
+      actor: decidedBy,
+      target: item.id,
+      detail: `${decision} ${item.kind} requested by ${item.actor}`,
+      ip: meta.ip,
+      userAgent: meta.userAgent,
+      sessionId: meta.sessionId,
+      result: "success",
+      reason: note,
+      oldValue: item.oldValue,
+      newValue: item.newValue,
+    });
+
+    return { ...item };
+  },
+
+  createPasswordResetToken(email: string): string | null {
+    const user = this.findAdminByEmail(email);
+    if (!user || user.status !== "active") return null;
+    const token = nid("rst");
+    passwordResetTokens.set(token, {
+      email: user.email,
+      expiresAt: Date.now() + 60 * 60 * 1000,
+    });
+    appendAudit({
+      action: "auth.password_reset_request",
+      actor: user.email,
+      actorId: user.id,
+      target: user.id,
+      detail: "Password reset requested",
+      result: "success",
+    });
+    return token;
+  },
+
+  consumePasswordResetToken(token: string): string {
+    const row = passwordResetTokens.get(token);
+    passwordResetTokens.delete(token);
+    if (!row) throw new Error("Invalid or expired reset link");
+    if (row.expiresAt < Date.now()) throw new Error("Invalid or expired reset link");
+    return row.email;
+  },
+
+  resetPasswordWithToken(
+    token: string,
+    passwordHash: string,
+    meta: { ip: string; userAgent?: string }
+  ) {
+    const email = this.consumePasswordResetToken(token);
+    const user = this.findAdminByEmail(email);
+    if (!user) throw new Error("Account not found");
+    user.passwordHash = passwordHash;
+    appendAudit({
+      action: "auth.password_reset",
+      actor: user.email,
+      actorId: user.id,
+      target: user.id,
+      detail: "Password reset completed via email link",
+      ip: meta.ip,
+      userAgent: meta.userAgent,
+      result: "success",
+    });
+    return { email: user.email };
+  },
 };
+
+function applyApprovalPayload(item: PendingApproval) {
+  const p = item.payload;
+  const actor = item.actor;
+  const ip = item.ip;
+  switch (item.kind) {
+    case "fees.update":
+      db.updateFees(
+        p as Partial<
+          Pick<
+            FeeConfig,
+            "marketingFeeRate" | "userShare" | "birrbackShare" | "pointsPerEtb"
+          >
+        >,
+        actor,
+        ip
+      );
+      break;
+    case "user.points_adjust":
+      db.adjustPoints(
+        String(p.id),
+        Number(p.points),
+        String(p.reason ?? item.reason ?? "approved adjustment"),
+        actor,
+        ip
+      );
+      break;
+    case "user.status":
+      db.setConsumerStatus(
+        String(p.id),
+        p.status as ConsumerStatus,
+        actor,
+        ip
+      );
+      break;
+    case "merchant.status":
+      db.setMerchantStatus(
+        String(p.id),
+        p.status as MerchantStatus,
+        actor,
+        ip
+      );
+      break;
+    case "merchant.update":
+      db.updateMerchant(
+        String(p.id),
+        p as Partial<Pick<Merchant, "cashbackRate" | "category">>,
+        actor,
+        ip
+      );
+      break;
+    case "escrow.reconcile":
+      db.reconcile(actor, ip);
+      break;
+    case "redemption.retry":
+      db.retryRedemption(String(p.id), actor, ip);
+      break;
+    case "transaction.reprocess":
+      db.reprocessTransaction(String(p.id), actor, ip);
+      break;
+    case "expiry.action":
+      if (p.action === "remind") {
+        db.sendExpiryReminder(String(p.userId), actor, ip);
+      } else {
+        const userIds = Array.isArray(p.userIds)
+          ? (p.userIds as string[])
+          : [String(p.userId)];
+        db.extendExpiry(
+          userIds,
+          Number(p.days),
+          String(p.reason ?? "approved"),
+          actor,
+          ip
+        );
+      }
+      break;
+    case "brand.create":
+      db.createBrandCampaign(
+        p as Parameters<typeof db.createBrandCampaign>[0],
+        actor,
+        ip
+      );
+      break;
+    case "brand.invoice":
+      db.issueInvoice(String(p.campaignId), actor, ip);
+      break;
+    case "fis.flag":
+      db.flagFis(String(p.merchantId), String(p.reason ?? ""), actor, ip);
+      break;
+    case "push.send":
+      db.sendPush(
+        p as {
+          title: string;
+          body: string;
+          audience: PushAudience;
+          target: string;
+        },
+        actor,
+        ip
+      );
+      break;
+    case "admin.status":
+      db.setAdminStatus(
+        String(p.id),
+        p.status as PanelUser["status"],
+        actor,
+        ip
+      );
+      break;
+    case "campaign.status":
+      db.setCampaignStatus(
+        String(p.id),
+        p.status as HappyHourCampaign["status"],
+        actor,
+        ip
+      );
+      break;
+    default:
+      throw new Error(`Unsupported approval kind: ${item.kind}`);
+  }
+}
 
 export type { Merchant, Consumer, Transaction, Redemption, AuditEvent, AdminRole };

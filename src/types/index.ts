@@ -1,6 +1,12 @@
-export type AdminRole = "super_admin" | "ops" | "finance" | "support";
+export type AdminRole =
+  | "super_admin"
+  | "ops"
+  | "finance"
+  | "support"
+  | "end_user";
 
 export type Permission =
+  | "profile:read"
   | "dashboard:read"
   | "merchants:read"
   | "merchants:write"
@@ -26,7 +32,9 @@ export type Permission =
   | "admins:read"
   | "admins:write"
   | "fees:write"
-  | "audit:read";
+  | "audit:read"
+  | "approvals:read"
+  | "approvals:write";
 
 export type PanelUser = {
   id: string;
@@ -37,6 +45,8 @@ export type PanelUser = {
   mfaEnabled: boolean;
   lastLoginAt: string | null;
   status: "active" | "disabled";
+  /** Linked consumer record for sample end_user logins */
+  consumerId?: string;
 };
 
 export type MerchantStatus = "pending" | "active" | "suspended" | "deactivated";
@@ -355,6 +365,9 @@ export type FeeConfig = {
 export type AuditAction =
   | "auth.login"
   | "auth.login_failed"
+  | "auth.forbidden"
+  | "auth.password_reset_request"
+  | "auth.password_reset"
   | "merchant.activate"
   | "merchant.suspend"
   | "merchant.deactivate"
@@ -374,16 +387,67 @@ export type AuditAction =
   | "fees.update"
   | "admin.create"
   | "admin.disable"
-  | "admin.password_change";
+  | "admin.password_change"
+  | "approval.requested"
+  | "approval.approved"
+  | "approval.rejected";
+
+export type AuditResult = "success" | "failure" | "pending";
 
 export type AuditEvent = {
   id: string;
   action: AuditAction;
   actor: string;
+  actorId?: string;
   target: string;
   detail: string;
   ip: string;
+  userAgent?: string;
+  sessionId?: string;
+  result?: AuditResult;
+  reason?: string;
+  oldValue?: string | null;
+  newValue?: string | null;
   createdAt: string;
+};
+
+export type ApprovalKind =
+  | "fees.update"
+  | "user.points_adjust"
+  | "user.status"
+  | "merchant.status"
+  | "merchant.update"
+  | "escrow.reconcile"
+  | "redemption.retry"
+  | "transaction.reprocess"
+  | "expiry.action"
+  | "brand.create"
+  | "brand.invoice"
+  | "fis.flag"
+  | "push.send"
+  | "admin.status"
+  | "campaign.status";
+
+export type PendingApproval = {
+  id: string;
+  kind: ApprovalKind;
+  action: AuditAction;
+  actor: string;
+  actorId?: string;
+  actorRole: AdminRole;
+  target: string;
+  payload: Record<string, unknown>;
+  oldValue?: string | null;
+  newValue?: string | null;
+  reason?: string;
+  ip: string;
+  userAgent?: string;
+  sessionId?: string;
+  status: "pending" | "approved" | "rejected";
+  createdAt: string;
+  decidedAt?: string;
+  decidedBy?: string;
+  decisionNote?: string;
 };
 
 export type DashboardOverview = {

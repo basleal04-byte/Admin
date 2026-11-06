@@ -70,3 +70,44 @@ export async function sendAdminCredentialsEmail(
 
   return { sent: true, mode: "resend" };
 }
+
+export async function sendPasswordResetEmail(input: {
+  to: string;
+  name: string;
+  resetUrl: string;
+}): Promise<SendMailResult> {
+  const apiKey = process.env.RESEND_API_KEY?.trim();
+  const from =
+    process.env.RESEND_FROM?.trim() || "BirrBack Panel <onboarding@resend.dev>";
+
+  if (!apiKey) {
+    return {
+      sent: false,
+      mode: "none",
+      reason:
+        "Email is not configured. Set RESEND_API_KEY in .env.local to send reset links.",
+    };
+  }
+
+  const resend = new Resend(apiKey);
+  const { error } = await resend.emails.send({
+    from,
+    to: input.to,
+    subject: "Reset your BirrBack Admin Panel password",
+    text: [
+      `Hello ${input.name},`,
+      "",
+      "We received a request to reset your BirrBack Admin Panel password.",
+      "",
+      `Open this link to choose a new password (valid for 1 hour):`,
+      input.resetUrl,
+      "",
+      "If you did not request this, ignore this email.",
+      "",
+      "— BirrBack Admin Panel",
+    ].join("\n"),
+  });
+
+  if (error) throw new Error(error.message);
+  return { sent: true, mode: "resend" };
+}

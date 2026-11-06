@@ -1,7 +1,10 @@
 "use client";
 
+import { useEffect } from "react";
 import { formatDistanceToNow } from "date-fns";
 import Link from "next/link";
+import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/layout/dashboard-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -12,7 +15,19 @@ import { useOverview } from "@/hooks/use-data";
 import { formatEtb, formatNumber } from "@/lib/utils";
 
 export default function OverviewPage() {
+  const { data: session, status } = useSession();
+  const router = useRouter();
   const { data, loading, error } = useOverview();
+
+  useEffect(() => {
+    if (status === "authenticated" && session?.user?.role === "end_user") {
+      router.replace("/profile");
+    }
+  }, [status, session, router]);
+
+  if (session?.user?.role === "end_user") {
+    return null;
+  }
 
   return (
     <>

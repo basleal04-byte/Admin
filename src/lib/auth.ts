@@ -38,6 +38,14 @@ export const authOptions: NextAuthOptions = {
 
         if (!email || !password || !mfaCode) {
           recordLoginFailure(key);
+          appendAudit({
+            action: "auth.login_failed",
+            actor: email || "unknown",
+            target: "panel",
+            detail: "Missing email, password, or MFA code",
+            result: "failure",
+            reason: "incomplete_credentials",
+          });
           return null;
         }
 
@@ -49,6 +57,8 @@ export const authOptions: NextAuthOptions = {
             actor: email || "unknown",
             target: "panel",
             detail: "Unknown or disabled account",
+            result: "failure",
+            reason: "unknown_or_disabled",
           });
           return null;
         }
@@ -59,8 +69,11 @@ export const authOptions: NextAuthOptions = {
           appendAudit({
             action: "auth.login_failed",
             actor: user.email,
+            actorId: user.id,
             target: "panel",
             detail: "Invalid password",
+            result: "failure",
+            reason: "invalid_password",
           });
           return null;
         }
@@ -70,8 +83,11 @@ export const authOptions: NextAuthOptions = {
           appendAudit({
             action: "auth.login_failed",
             actor: user.email,
+            actorId: user.id,
             target: "panel",
             detail: "Invalid MFA code",
+            result: "failure",
+            reason: "invalid_mfa",
           });
           return null;
         }
@@ -81,8 +97,11 @@ export const authOptions: NextAuthOptions = {
         appendAudit({
           action: "auth.login",
           actor: user.email,
+          actorId: user.id,
           target: "panel",
           detail: "Admin session established",
+          result: "success",
+          sessionId: `sess_${user.id}`,
         });
 
         return {
@@ -90,6 +109,7 @@ export const authOptions: NextAuthOptions = {
           email: user.email,
           name: user.name,
           role: user.role,
+          consumerId: user.consumerId,
         };
       },
     }),
@@ -99,6 +119,7 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.id = user.id;
         token.role = user.role as AdminRole;
+        token.consumerId = user.consumerId;
       }
       return token;
     },
@@ -106,6 +127,7 @@ export const authOptions: NextAuthOptions = {
       if (session.user) {
         session.user.id = token.id as string;
         session.user.role = (token.role as AdminRole) ?? "support";
+        session.user.consumerId = token.consumerId;
       }
       return session;
     },

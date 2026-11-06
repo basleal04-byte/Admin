@@ -1,6 +1,7 @@
 import type { AdminRole, Permission } from "@/types";
 
 const ALL: Permission[] = [
+  "profile:read",
   "dashboard:read",
   "merchants:read",
   "merchants:write",
@@ -27,6 +28,8 @@ const ALL: Permission[] = [
   "admins:write",
   "fees:write",
   "audit:read",
+  "approvals:read",
+  "approvals:write",
 ];
 
 const ROLE_PERMISSIONS: Record<AdminRole, Permission[]> = {
@@ -46,6 +49,7 @@ const ROLE_PERMISSIONS: Record<AdminRole, Permission[]> = {
     "reports:read",
     "fis:read",
     "audit:read",
+    "approvals:read",
   ],
   finance: [
     "dashboard:read",
@@ -61,6 +65,7 @@ const ROLE_PERMISSIONS: Record<AdminRole, Permission[]> = {
     "reports:read",
     "fees:write",
     "audit:read",
+    "approvals:read",
   ],
   support: [
     "dashboard:read",
@@ -74,7 +79,9 @@ const ROLE_PERMISSIONS: Record<AdminRole, Permission[]> = {
     "push:read",
     "push:write",
     "audit:read",
+    "approvals:read",
   ],
+  end_user: ["profile:read"],
 };
 
 export function permissionsFor(role: AdminRole): Permission[] {

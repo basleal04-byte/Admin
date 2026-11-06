@@ -408,11 +408,14 @@ export function useFees() {
         >
       >
     ) => {
-      await api("/api/admin/fees", {
+      const result = await api<
+        FeeConfig | { pendingApproval?: boolean; message?: string }
+      >("/api/admin/fees", {
         method: "PUT",
         body: JSON.stringify(patch),
       });
       await refetch();
+      return result;
     },
     [refetch]
   );
